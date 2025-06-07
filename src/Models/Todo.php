@@ -14,11 +14,11 @@ class Todo
         $this->db = Database::getConnection();
     }
 
-    public function create(string $title, ?string $description, ?string $dueDate, int $userId, string $status = 'Pending'): int
+    public function create(string $title, ?string $description, ?string $dueDate, int $userId, string $status = 'Pending'): bool
     {
         $stmt = $this->db->prepare("CALL CreateTodo(?, ?, ?, ?, ?)");
-        $stmt->execute([$title, $description, $dueDate, $userId, $status]);
-        return $this->db->lastInsertId();
+
+        return $stmt->execute([$title, $description, $dueDate, $userId, $status]);;
     }
 
     public function findAllByUser(int $userId): array
