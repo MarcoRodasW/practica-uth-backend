@@ -14,10 +14,15 @@ class Database
     {
         if (self::$connection === null) {
             try {
-                $host = $_ENV['DB_HOST'];
-                $dbname = $_ENV['DB_NAME'];
-                $username = $_ENV['DB_USER'];
-                $password = $_ENV['DB_PASS'];
+
+                $host = getenv('DB_HOST');
+                $dbname = getenv('DB_NAME');
+                $username = getenv('DB_USER');
+                $password = getenv('DB_PASS');
+
+                if (!$host || !$dbname || !$username || !$password) {
+                    throw new \Exception("One or more database environment variables are not set.");
+                }
 
                 $dsn = "mysql:host={$host};dbname={$dbname};charset=utf8mb4";
 
@@ -25,10 +30,10 @@ class Database
                     PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
                     PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
                     PDO::ATTR_EMULATE_PREPARES => false,
-                    PDO::ATTR_TIMEOUT => 10, // 10 second timeout
+                    PDO::ATTR_TIMEOUT => 10,
                 ]);
 
-                // Store connection info for health checks
+
                 self::$connectionInfo = [
                     'host' => $host,
                     'database' => $dbname,
@@ -37,6 +42,8 @@ class Database
                 ];
             } catch (PDOException $e) {
                 throw new PDOException("Database connection failed: " . $e->getMessage());
+            } catch (\Exception $e) {
+                throw new \RuntimeException("Application configuration error: " . $e->getMessage());
             }
         }
 

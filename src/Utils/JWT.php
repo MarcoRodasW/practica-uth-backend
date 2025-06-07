@@ -13,8 +13,8 @@ class JWT
 
     public static function init(): void
     {
-        self::$secret = $_ENV['JWT_SECRET'];
-        self::$expire = (int)$_ENV['JWT_EXPIRE'];
+        self::$secret = getenv('JWT_SECRET');
+        self::$expire = (int)getenv('JWT_EXPIRE');
     }
 
     public static function encode(array $payload): string

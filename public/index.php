@@ -6,9 +6,13 @@ use Dotenv\Dotenv;
 use UthApi\Utils\JWT;
 use UthApi\Utils\Response;
 
-// Load environment variables
-$dotenv = Dotenv::createImmutable(__DIR__ . '/..');
-$dotenv->load();
+
+$appEnv = getenv('APP_ENV') ?: 'development';
+
+if ($appEnv !== 'production' && file_exists(__DIR__ . '/../.env')) {
+    $dotenv = Dotenv::createImmutable(__DIR__ . '/..');
+    $dotenv->load();
+}
 
 // Initialize JWT
 JWT::init();
