@@ -1,9 +1,44 @@
-# Redirect all requests to public directory
+# Enable URL rewriting
 RewriteEngine On
-RewriteCond %{REQUEST_URI} !^/public/
-RewriteRule ^(.*)$ /public/$1 [L]
 
-# Deny access to sensitive files in root
+# Security Headers
+Header always set X-Content-Type-Options nosniff
+Header always set X-Frame-Options DENY
+Header always set X-XSS-Protection "1; mode=block"
+Header always set Referrer-Policy "strict-origin-when-cross-origin"
+
+# CORS Headers for API
+Header always set Access-Control-Allow-Origin "*"
+Header always set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+Header always set Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With"
+Header always set Access-Control-Max-Age "3600"
+
+# Handle preflight OPTIONS requests
+# This rule must be *before* other RewriteRules that modify the URI
+RewriteCond %{REQUEST_METHOD} OPTIONS
+RewriteRule ^(.*)$ - [R=200,L] # Send 200 OK without further processing
+
+# Remove trailing slash from URLs
+# This should also come before routing rules to avoid issues
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_URI} (.+)/$
+RewriteRule ^ %1 [R=301,L]
+
+# Route all API requests to index.php
+# IMPORTANT: This passes the original URI (e.g., /api/v1/todos) to index.php
+# The PHP code then processes it.
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^api/v1/(.*)$ index.php [QSA,L]
+
+# Route health and setup endpoints
+# These also pass the original URI (e.g., /health/database)
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(health|setup)(.*)$ index.php [QSA,L]
+
+
+# Deny access to sensitive files that might accidentally be in public/
 <Files ".env">
     Order allow,deny
     Deny from all
@@ -19,8 +54,42 @@ RewriteRule ^(.*)$ /public/$1 [L]
     Deny from all
 </Files>
 
-# Deny access to directories
-RedirectMatch 404 /\.git
-RedirectMatch 404 /vendor
-RedirectMatch 404 /src
-RedirectMatch 404 /sql
+# Prevent access to PHP files in uploads (if you add file upload later)
+# If your 'uploads' directory is within 'public', this is critical.
+# If 'uploads' is outside 'public', Apache won't serve them anyway.
+<FilesMatch "\.(php|php3|php4|php5|phtml)$">
+    <IfModule mod_rewrite.c>
+        RewriteEngine On
+        RewriteCond %{REQUEST_URI} uploads/
+        RewriteRule .* - [F,L]
+    </IfModule>
+</FilesMatch>
+
+# Set proper MIME types
+<IfModule mod_mime.c>
+    AddType application/json .json
+</IfModule>
+
+# Enable compression
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/plain
+    AddOutputFilterByType DEFLATE text/html
+    AddOutputFilterByType DEFLATE text/xml
+    AddOutputFilterByType DEFLATE text/css
+    AddOutputFilterByType DEFLATE application/xml
+    AddOutputFilterByType DEFLATE application/xhtml+xml
+    AddOutputFilterByType DEFLATE application/rss+xml
+    AddOutputFilterByType DEFLATE application/javascript
+    AddOutputFilterByType DEFLATE application/x-javascript
+    AddOutputFilterByType DEFLATE application/json
+</IfModule>
+
+# Cache static files
+<IfModule mod_expires.c>
+    ExpiresActive on
+    ExpiresByType text/css "access plus 1 year"
+    ExpiresByType application/javascript "access plus 1 year"
+    ExpiresByType image/png "access plus 1 year"
+    ExpiresByType image/jpg "access plus 1 year"
+    ExpiresByType image/jpeg "access plus 1 year"
+</IfModule>
